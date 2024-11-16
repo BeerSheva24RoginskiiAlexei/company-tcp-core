@@ -1,18 +1,20 @@
 package telran.employees;
 
-import telran.io.*;
-import telran.net.*;
+import telran.io.Persistable;
 
 public class Main {
-    private static final int PORT = 4000;
-    private static final String DATA_FILE = "employees.data";
-
     public static void main(String[] args) {
         Company company = new CompanyImpl();
+
         if (company instanceof Persistable persistable) {
-            persistable.restoreFromFile(DATA_FILE);
+            persistable.restoreFromFile("employees.data");
+
+            PeriodicSaver saver = new PeriodicSaver(company);
+            saver.start();
+
+            PeriodicSaver.setDelay(60); 
+            PeriodicSaver.setFileName("new_employees.data");
         }
-        TcpServer server = new TcpServer(new CompanyProtocol(company), PORT);
-        server.run();
+
     }
 }

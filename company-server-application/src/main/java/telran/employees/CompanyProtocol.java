@@ -1,5 +1,9 @@
 package telran.employees;
 
+import java.lang.reflect.*;
+import java.util.Arrays;
+import java.util.NoSuchElementException;
+
 import org.json.JSONArray;
 
 import telran.net.Protocol;
@@ -7,82 +11,77 @@ import telran.net.Request;
 import telran.net.Response;
 import telran.net.ResponseCode;
 
-import java.util.Arrays;
-import java.util.NoSuchElementException;
-
 public class CompanyProtocol implements Protocol {
-    private final Company company;
+    Company company;
 
     public CompanyProtocol(Company company) {
         this.company = company;
     }
 
     @Override
-    public Response getResponse(Request req) {
-        return switch (req.requestType()) {
-            case "addEmployee" -> handleRequest(this::addEmployee, req.requestData());
-            case "getDepartmentBudget" -> handleRequest(this::getDepartmentBudget, req.requestData());
-            case "getDepartments" -> handleRequest(this::getDepartments, "");
-            case "getEmployee" -> handleRequest(this::getEmployee, req.requestData());
-            case "getManagersWithMostFactor" -> handleRequest(this::getManagersWithMostFactor, "");
-            case "removeEmployee" -> handleRequest(this::removeEmployee, req.requestData());
-            default -> new Response(ResponseCode.WRONG_TYPE, "Request type does not exist");
-        };
-    }
-
-    private Response handleRequest(ResponseFunction function, String data) {
+    public Response getResponse(Request request) {
+        String requestType = request.requestType();
+        String requestData = request.requestData();
+        Response response = null;
         try {
-            return function.apply(data);
-        } catch (Exception e) {
-            return new Response(ResponseCode.WRONG_DATA, e.getMessage());
+            Method method = CompanyProtocol.class.getDeclaredMethod(requestType, String.class);
+            method.setAccessible(true);
+            response = (Response) method.invoke(this, requestData);
+        } catch (NoSuchMethodException e) {
+            response = new Response(ResponseCode.WRONG_TYPE, requestType + " Wrong type");
+           
+        } catch (InvocationTargetException e) {
+            Throwable causeExc = e.getCause();
+            String message = causeExc == null ? e.getMessage() : causeExc.getMessage();
+            response = new Response(ResponseCode.WRONG_DATA, message);
+        } catch (Exception e){
+            //only for finishing Server and printing out Exception full stack
+            throw new RuntimeException(e);
         }
+       
+        return response;
     }
 
-    private Response addEmployee(String data) {
-        Employee employee = Employee.getEmployeeFromJSON(data);
-        if (company.getEmployee(employee.getId()) != null) {
-            throw new IllegalStateException("Employee with this ID already exists.");
+    Response getOkResponse(String responseData) {
+        return new Response(ResponseCode.OK, responseData);
+    }
+
+    Response addEmployee(String requestData) {
+        Employee empl = Employee.getEmployeeFromJSON(requestData);
+        company.addEmployee(empl);
+        return getOkResponse("");
+    }
+
+    Response getEmployee(String requestData) {
+        long id = Long.parseLong(requestData);
+        Employee empl = company.getEmployee(id);
+        if (empl == null) {
+            throw new NoSuchElementException(String.format("Employee %d not found", id));
         }
-        company.addEmployee(employee);
-        return new Response(ResponseCode.OK, "Employee added successfully.");
+        return getOkResponse(empl.toString());
     }
 
-    private Response getDepartmentBudget(String data) {
-        int budget = company.getDepartmentBudget(data);
-        return new Response(ResponseCode.OK, String.valueOf(budget));
+    Response removeEmployee(String requestData) {
+        long id = Long.parseLong(requestData);
+        Employee empl = company.removeEmployee(id);
+        return getOkResponse(empl.toString());
     }
 
-    private Response getDepartments(String ignored) {
+    Response getDepartmentBudget(String requestData) {
+        int budget = company.getDepartmentBudget(requestData);
+        return getOkResponse(budget + "");
+    }
+
+    Response getDepartments(String requestData) {
         String[] departments = company.getDepartments();
         JSONArray jsonArray = new JSONArray(departments);
-        return new Response(ResponseCode.OK, jsonArray.toString());
+        return getOkResponse(jsonArray.toString());
     }
 
-    private Response getEmployee(String data) {
-        Employee employee = company.getEmployee(Long.parseLong(data));
-        if (employee == null) {
-            throw new NoSuchElementException("Employee does not exist with this ID.");
-        }
-        return new Response(ResponseCode.OK, employee.toString());
-    }
-
-    private Response getManagersWithMostFactor(String ignored) {
+    Response getManagersWithMostFactor(String requestData) {
         Manager[] managers = company.getManagersWithMostFactor();
-        JSONArray jsonArray = new JSONArray(Arrays.stream(managers).map(Manager::toString).toArray());
-        return new Response(ResponseCode.OK, jsonArray.toString());
+        JSONArray jsonArray = new JSONArray(Arrays.stream(managers).map(Manager::toString).toList());
+        return getOkResponse(jsonArray.toString());
     }
 
-    private Response removeEmployee(String data) {
-        long id = Long.parseLong(data);
-        Employee removedEmployee = company.removeEmployee(id);
-        if (removedEmployee == null) {
-            throw new NoSuchElementException("Employee does not exist with this ID.");
-        }
-        return new Response(ResponseCode.OK, removedEmployee.toString());
-    }
-
-    @FunctionalInterface
-    private interface ResponseFunction {
-        Response apply(String data) throws Exception;
-    }
 }

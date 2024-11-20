@@ -54,7 +54,7 @@ private static Employee getSalesPerson(Employee empl, InputOutput io) {
 	WageEmployee wageEmployee = (WageEmployee) getWageEmployee(empl, io);
 	float percents = io.readNumberRange("Enter percents", "Wrong percents value", MIN_PERCENT, MAX_PERCENT).floatValue();
 	long sales = io.readNumberRange("Enter sales", "Wrong sales value", MIN_SALES, MAX_SALES).longValue();
-	return new SalesPerson(empl.getId(),empl.getBasicSalary() , empl.getDepartment(),
+	return new SalesPerson(empl.getId(),empl.getSalary() , empl.getDepartment(),
 			wageEmployee.getHours(), wageEmployee.getWage(),
 			percents, sales);
 }
@@ -62,7 +62,7 @@ private static Employee getManager(Employee empl, InputOutput io) {
 	
 	float factor = io.readNumberRange("Enter factor",
 			"Wrong factor value", MIN_FACTOR, MAX_FACTOR).floatValue();
-	return new Manager(empl.getId(), empl.getBasicSalary(), empl.getDepartment(), factor );
+	return new Manager(empl.getId(), empl.getSalary(), empl.getDepartment(), factor );
 }
 private static Employee getWageEmployee(Employee empl, InputOutput io) {
 	
@@ -70,7 +70,7 @@ private static Employee getWageEmployee(Employee empl, InputOutput io) {
 			"Wrong hours value", MIN_HOURS, MAX_HOURS).intValue();
 	int wage = io.readNumberRange("Enter hour wage",
 			"Wrong wage value", MIN_WAGE, MAX_WAGE).intValue();;
-	return new WageEmployee(empl.getId(), empl.getBasicSalary(), empl.getDepartment(), hours, wage);
+	return new WageEmployee(empl.getId(), empl.getSalary(), empl.getDepartment(), hours, wage);
 }
 private static Employee readEmployee(InputOutput io) {
 	
